@@ -166,17 +166,22 @@ fi
 # for more options visit 
 #https://www.samba.org/ftp/rsync/rsync.html
 RSYNC_OPTIONS="--recursive";                        # recurse into directories
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --itemize-changes"; # output a change-summary for all updates
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --copy-links";      # transform symlink into referent file/dir
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --perms";           # preserve permissions
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --times";           # preserve modification times
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --group";           # preserve group
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --owner";           # preserve owner (super-user only)
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";        # skip based on checksum, not mod-time & size
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --perms";           # -p (--perms) preserve permissions
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --times";           # -t (--times) preserve modification times
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --group";           # -g (--groups) preserve group
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --owner";           # -o (--owner) preserve owner (super-user only)
+#RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";        # skip based on checksum, not mod-time & size
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --human-readable";  # output numbers in a human-readable format
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --delete";          # delete extraneous files from dest dirs
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --progress";        # show progress during transfer
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --stats";           # give some file-transfer stats
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --hard-links";      # preserve hard links
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --hard-links";      # -H (--hard-links) preserve hard links.
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --specials";        # This option causes rsync to transfer special files such as named sockets and fifos.
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --devices";         # This option causes rsync to transfer character and block device files to the remote
+                                                    # system to recreate these devices. This option has no effect if the receiving rsync 
+                                                    # is not run as the super-user.
 RSYNC_OPTIONS="${RSYNC_OPTIONS} ${DRYRUN}";         # give some file-transfer stats
 
 # Overwrite Rsync options
