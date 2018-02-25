@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Source Settings
+# Use absolute paths. Relative paths tend to break the hard linking advantage of rsync.
+# Paths can include spaces as long as variable contents are double quoted
+export DESKTOP_HOSTNAME="iMac"
+export DESKTOP_BASEPATH="/Users/JohnSmith/"
+
+export LAPTOP_HOSTNAME="MacBook"
+export LAPTOP_BASEPATH=~/
+
+# Local Target Settings
+export LOCAL_BASEPATH="/Volumes/MyUSBHarddriveName"
+
+# Remote Target SSH Setting
+export REMOTE_IDENTITYKEY=~/.ssh/id_rsa
+export REMOTE_PORT="22"
+export REMOTE_USERNAME="johnsmith"
+export REMOTE_HOSTNAME="freenas.ip.com"
+export REMOTE_BASEPATH=/mnt/Datastore/User/johnsmith/
+
+# Overwrite default rsync options in the script
+# default rsync option: --recursive --copy-links --perms --times --group --owner --checksum --human-readable 
+#  --delete --progress --stats --hard-links
+# https://www.samba.org/ftp/rsync/rsync.html
+# example : rsync -rlptgochu [source] [target]
+
+#export RSYNC_FLAGS="-rlptgochu"

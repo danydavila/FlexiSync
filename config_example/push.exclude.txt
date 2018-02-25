@@ -1,0 +1,30 @@
+#ignore system
+Applications
+Library
+.part
+.Trash
+.Trash/*.*
+.Trash/*
+.Temp/*
+.DS_Store
+Applications
+System
+bin
+etc 
+net
+sbin 
+var
+Library
+cores
+opt
+tmp
+Network
+Volumes
+dev
+usr
+
+# Ignore for now big folder since our MacBook Laptop does not enought space
+Movies
+VMs
+VirtualBox VMs
+"VirtualBox VMs"

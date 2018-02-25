@@ -1,0 +1,53 @@
+### Per user setting ignore confile files
+config
+
+### Project log files
+log/*
+!log/.keep
+
+### Ignore Mac OSX Operating System files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Ignore Windows Operating System files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Ignore Linux Operating System files
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# TextMate
+*.tmproj
+*.tmproject
+tmtags
+
+# Visual Studio Code
+.vscode/*
