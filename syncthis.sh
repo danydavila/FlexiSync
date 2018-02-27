@@ -138,7 +138,8 @@ function showConfigVar(){
   echo "--exclude-from=${PUSH_EXCLUTIONLIST} \ ";
   echo "--files-from=${PUSH_BACKUPLIST} \ ";
   echo "--log-file=${PUSH_LOGFILE} \ ";
-  echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}"
+  echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}" 
+  echo "${GREEN_TEXT} SSH Ciphers:${RESET_TEXT} ${SSH_CIPHERS}"
 }
 
 if [ $# -eq 2 ]
@@ -172,7 +173,7 @@ RSYNC_OPTIONS="${RSYNC_OPTIONS} --perms";           # -p (--perms) preserve perm
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --times";           # -t (--times) preserve modification times
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --group";           # -g (--groups) preserve group
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --owner";           # -o (--owner) preserve owner (super-user only)
-#RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";        # skip based on checksum, not mod-time & size
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --one-file-system"; # -x,(--one-file-system)don't cross filesystem boundaries
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --human-readable";  # output numbers in a human-readable format
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --delete";          # delete extraneous files from dest dirs
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --progress";        # show progress during transfer
@@ -182,6 +183,7 @@ RSYNC_OPTIONS="${RSYNC_OPTIONS} --specials";        # This option causes rsync t
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --devices";         # This option causes rsync to transfer character and block device files to the remote
                                                     # system to recreate these devices. This option has no effect if the receiving rsync 
                                                     # is not run as the super-user.
+#RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";       # skip based on checksum, not mod-time & size
 RSYNC_OPTIONS="${RSYNC_OPTIONS} ${DRYRUN}";         # give some file-transfer stats
 
 # Overwrite Rsync options
@@ -190,17 +192,29 @@ if [ ! -z ${RSYNC_FLAGS:+x} ];
    RSYNC_OPTIONS=${RSYNC_FLAGS}
 fi
 
+# Default SSH client cipher.
+# To found out supported ciphers. user [server]$  ssh -Q cipher. 
+# cipher ending with -ctr or -gcm: 
+# for CTR mode aims at confidentiality 
+# for GCM additionally aims at integrity
+SSH_OCIPHERS="aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr"
+# Overwrite Rsync Ciphers
+if [ ! -z ${SSH_CIPHERS:+x} ]; 
+   then 
+   SSH_OCIPHERS=${SSH_CIPHERS}
+fi
+
 # exclude Windows and Mac system file
 RSYNC_EXCLUDE_OSFILE="--exclude='\$RECYCLE.BIN' --exclude='\$Recycle.Bin' --exclude='.AppleDB' ";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.AppleDesktop' --exclude='.AppleDouble' ";
-RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.com.apple.timemachine.supported' --exclude='.dbfseventsd' ";
-RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.DocumentRevisions-V100*' --exclude='.DS_Store' ";
+RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.com.apple.timemachine.supported' --exclude='.com.apple.timemachine.donotpresent'";
+RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.DocumentRevisions-V100*' --exclude='.DS_Store' --exclude='.dbfseventsd' ";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.fseventsd' --exclude='.PKInstallSandboxManager' ";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.Spotlight*' --exclude='.SymAV*' --exclude='.symSchedScanLockxz' ";
-RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.TemporaryItems' --exclude='.Trash*' --exclude='.vol' ";
+RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.TemporaryItems' --exclude='.Trash*' --exclude='.vol' --exclude='RECYCLER'";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='.VolumeIcon.icns' --exclude='hiberfil.sys' --exclude='lost+found'";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='hiberfil.sys' --exclude='lost+found' --exclude='pagefile.sys' --exclude='Recycled' ";
-RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='RECYCLER' --exclude='Thumbs.db' --exclude='._.TemporaryItems' --exclude='._.DS_Store' ";
+RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='Thumbs.db' --exclude='._.TemporaryItems' --exclude='._.DS_Store' --exclude='._.com.apple.timemachine.donotpresent'";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude={\"/dev/*\",\"/proc/*\",\"/sys/*\",\"/tmp/*\",\"/run/*\",\"/mnt/*\",\"/media/*\",\"/lost+found\"} ";
 
 case $1 in
@@ -224,7 +238,7 @@ case $1 in
                --exclude-from=${PULL_EXCLUTIONLIST} \
                --files-from=${PULL_BACKUPLIST} \
                --log-file=${PULL_LOGFILE} \
-               -e "ssh -p ${REMOTE_PORT} -i ${REMOTE_IDENTITYKEY}" ${REMOTE_USERNAME}@${REMOTE_HOSTNAME}:${REMOTE_BASEPATH} ${SOURCE_BASEPATH}
+               -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_PORT} -i ${REMOTE_IDENTITYKEY}" ${REMOTE_USERNAME}@${REMOTE_HOSTNAME}:${REMOTE_BASEPATH} ${SOURCE_BASEPATH}
             fi
     ;;
 	 push)
@@ -247,8 +261,13 @@ case $1 in
                --exclude-from=${PUSH_EXCLUTIONLIST} \
                --files-from=${PUSH_BACKUPLIST} \
                --log-file=${PUSH_LOGFILE} \
-               ${SOURCE_BASEPATH} -e "ssh -p ${REMOTE_PORT} -i ${REMOTE_IDENTITYKEY}" ${REMOTE_USERNAME}@${REMOTE_HOSTNAME}:${REMOTE_BASEPATH}
-           
+               ${SOURCE_BASEPATH} -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_PORT} -i ${REMOTE_IDENTITYKEY}" ${REMOTE_USERNAME}@${REMOTE_HOSTNAME}:${REMOTE_BASEPATH}
+               # SSH Option:
+               # -T : turn off pseudo-tty to decrease cpu load on destination.
+               # -o : Compression=no : Turn off SSH compression.
+               # -x : turn off X forwarding if it is on by default.
+               # -c : try hardware accelerated AES-NI instructions.
+               # -oCiphers :  connect by specifying an allowed Cipher
             fi
     ;;
     * )

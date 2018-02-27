@@ -19,10 +19,6 @@ export REMOTE_USERNAME="johnsmith"
 export REMOTE_HOSTNAME="freenas.ip.com"
 export REMOTE_BASEPATH=/mnt/Datastore/User/johnsmith/
 
-# Overwrite default rsync options in the script
-# default rsync option: --recursive --copy-links --perms --times --group --owner --checksum --human-readable 
-#  --delete --progress --stats --hard-links
-# https://www.samba.org/ftp/rsync/rsync.html
-# example : rsync -rlptgochu [source] [target]
-
+# Advanced Options
 #export RSYNC_FLAGS="-rlptgochu"
+#export SSH_CIPHERS="aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr"
