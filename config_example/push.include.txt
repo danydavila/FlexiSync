@@ -1,6 +1,0 @@
-# sync only selected folder
-.ssh
-Desktop
-Documents
-Pictures
-Music
