@@ -1,5 +1,15 @@
 ### Per user setting ignore confile files
-config
+config/*
+!config/example.conf
+!config/include_list
+config/include_list/*
+!config/exclude_list
+config/exclude_list/*
+
+!config/exclude_list/pull.d.example.txt
+!config/exclude_list/push.b.example.txt
+!config/include_list/pull.c.example.txt
+!config/include_list/push.a.example.txt
 
 ### Project log files
 log/*
