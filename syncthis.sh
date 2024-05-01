@@ -2,7 +2,12 @@
 set -o errexit
 set -o pipefail
 set -o nounset
-#set -o xtrace
+
+## Set some color for our text. Color constants
+RESET_TEXT=$'\e[0m'
+LIGHT_YELLOW_TEXT=$'\e[93m'
+GREEN_TEXT=$'\e[92m'
+GREEN_BLINK_TEXT=$'\e[5;32m'
 
 ## General Settings
 APPNAME=$(basename $0 | sed "s/\.sh$//")
@@ -21,11 +26,6 @@ __INCLUDE_FOLDER="${__DIR}/config/include_list"
 __LOG_FOLDER="${__DIR}/log"
 
 cd $__DIR;
-
-## Set some color for our text
-LIGHT_CYAN_TEXT=$'\e[96m'; LIGHT_MAGENTA_TEXT=$'\e[35m'; LIGHTYELLOW_TEXT=$'\e[93m'; GREEN_TEXT=$'\e[92m'; 
-GREEN_TEXT_BLINK=$'\e[5;32m'; YELLOW_TEXT=$'\e[5;33m'; RESET_TEXT=$'\e[25;0m';
-
 
 function show_howto(){
      echo ""
