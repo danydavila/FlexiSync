@@ -1,5 +1,10 @@
 ### Userspace
-
+config/*
+!config/enabled/example.conf
+!config/exclude_list/ignore_files_on_pull.txt
+!config/exclude_list/ignore_files_on_push.txt
+!config/include_list/files_or_folders_list_to_pull.txt
+!config/include_list/files_or_folders_list_to_push.txt
 
 ### Project log files
 log/*
