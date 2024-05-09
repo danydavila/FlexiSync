@@ -3,6 +3,8 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+APP_NAME="flexisync"
+APP_VERSION="1.0.0"
 ## Set some color for our text. Color constants
 RESET_TEXT=$'\e[0m'
 LIGHT_YELLOW_TEXT=$'\e[93m'
@@ -11,6 +13,7 @@ GREEN_BLINK_TEXT=$'\e[5;32m'
 
 function show_usage(){
    cat << EOF
+${APP_NAME} (${APP_VERSION})
 
 Usage: ./sync.sh [config_name] [push|pull] [remote|local] [run]
 
@@ -95,11 +98,8 @@ fi
 # Load configuration
 source "${CONFIG_FILE}"
 
-
-exit 1
 ## General Settings
-APPNAME=$(basename $0 | sed "s/\.sh$//")
-LOGNAME="${APPNAME}"
+LOGNAME="${APP_NAME}"
 LOGDATE=$(date +"%Y-%m-%d_%H_%M")
 
 # Magic variables
@@ -160,12 +160,12 @@ PUSH_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.push.log"
 PULL_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.pull.log"
 
 function touchListFiles(){
-  if [ ! -f $1 ]; 
-   then 
-   echo "Missing $1 file"; 
+  if [ ! -f $1 ];
+   then
+   echo "Missing $1 file";
    echo "Creating file..."
    touch $1
-  fi 
+  fi
 }
 touchListFiles ${PUSH_BACKUPLIST}
 touchListFiles ${PUSH_EXCLUTIONLIST}
@@ -173,36 +173,27 @@ touchListFiles ${PULL_BACKUPLIST}
 touchListFiles ${PULL_EXCLUTIONLIST}
 
 function showConfigVar(){
-  echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${SRC_BASEPATH}"
-  echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${TARGET_BASEPATH}"
-  echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS} \ "
-  echo "--exclude-from=${PUSH_EXCLUTIONLIST} \ ";
-  echo "--files-from=${PUSH_BACKUPLIST} \ ";
-  echo "--log-file=${PUSH_LOGFILE} \ ";
-  echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}" 
-  echo "${GREEN_TEXT} SSH Ciphers:${RESET_TEXT} ${SSH_OCIPHERS}"
+   echo "${GREEN_TEXT} App:${RESET_TEXT} ${APP_NAME} (${APP_VERSION}) "
+   echo "${GREEN_TEXT} Configuration Name:${RESET_TEXT} ${CONFIG_NAME} "
+   echo "${GREEN_TEXT} Action:${RESET_TEXT} ${ACTION}"
+   echo "${GREEN_TEXT} Location:${RESET_TEXT} ${LOCATION}"
+   echo "${GREEN_TEXT} Mode:${RESET_TEXT} ${MODE}"
+   echo "${GREEN_TEXT} Config Filepath:${RESET_TEXT} ${CONFIG_FILE}"
+   echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${SRC_BASEPATH}"
+   echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${TARGET_BASEPATH}"
+   echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS} \ "
+   echo "--exclude-from=${PUSH_EXCLUTIONLIST} \ ";
+   echo "--files-from=${PUSH_BACKUPLIST} \ ";
+   echo "--log-file=${PUSH_LOGFILE} \ ";
+   echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}"
+   echo "${GREEN_TEXT} SSH Ciphers:${RESET_TEXT} ${SSH_OCIPHERS}"
 }
 
-if [ $# -eq 3 ]
-  then
-       echo "${GREEN_TEXT_BLINK} 4rd Parameter is missing running in test mode --dry-run${RESET_TEXT}"
-       DRYRUN="--dry-run"
+if [ "${MODE}" == "--dry-run" ]; then
+   echo "${GREEN_BLINK_TEXT} 4rd Parameter is missing running in test mode --dry-run${RESET_TEXT}"
+   DRYRUN="--dry-run"
 else
-     #define process mode. dry-drun (test) or push to production
-      case $4 in
-        go)
-             DRYRUN=""
-            ;;
-        commit)
-             DRYRUN=""
-            ;;
-        run)
-             DRYRUN=""
-            ;;
-          * )
-             DRYRUN="--dry-run"
-          ;;
-     esac
+   DRYRUN=""
 fi
 
 # for more options visit 
@@ -269,7 +260,6 @@ echo ""
 showConfigVar
 echo ""
 
-echo 'Stoppe hammer time'
 exit 1;
 case $2 in
 	 pull) 
