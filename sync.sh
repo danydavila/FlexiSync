@@ -41,6 +41,24 @@ if [ $# -lt 3 ]; then
     show_usage
 fi
 
+# Assign variables from arguments
+CONFIG_NAME=$1
+ACTION=$2
+LOCATION=$3
+MODE=${4:-"--dry-run"}  # Default to dry-run if not specified
+
+# Directories
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="${DIR}/log"
+CONFIG_DIR="${DIR}/config/enabled/${CONFIG_NAME}.conf"
+
+# Check if configuration file exists
+if [ ! -f "${CONFIG_DIR}" ]; then
+    echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration file ${CONFIG_DIR}${RESET_TEXT}"
+    echo "${LIGHTYELLOW_TEXT} [x] Missing 1st argument: [ configuration_file_name ] ${RESET_TEXT}";
+    exit 1
+fi
+
 ## General Settings
 APPNAME=$(basename $0 | sed "s/\.sh$//")
 LOGNAME="${APPNAME}"
