@@ -9,6 +9,38 @@ LIGHT_YELLOW_TEXT=$'\e[93m'
 GREEN_TEXT=$'\e[92m'
 GREEN_BLINK_TEXT=$'\e[5;32m'
 
+function show_usage(){
+     echo ""
+     echo "usage : ./sync.sh [config_name] [push|pull] [remote|local] [run]"
+     echo ""
+     echo -e "\nExamples:"
+     echo -e "\n Synchronize local source to remote destination directory/files:"
+     echo "    Preview (--dry-run) perform a trial run that doesn't make any changes (and produces mostly the same output as a real run)"
+     echo "    ./sync.sh config_name push remote"
+     echo "    Run the process"
+     echo "    ./sync.sh config_name push remote run"
+     echo -e "\n Synchronize remote source to a local destination directory/files:"
+     echo "    Preview (--dry-run) is very useful option when you want to simulate the execution of an sync without actually making any changes."
+     echo "    ./sync.sh config_name pull remote"
+     echo "    Run the process"
+     echo "    ./sync.sh config_name pull remote run"
+     echo ""
+     echo " To Synchronize local source to local destination:"
+     echo "    Preview (--dry-run)"
+     echo "    ./sync.sh config_name push local"
+     echo "    ./sync.sh config_name pull local"
+     echo "    Run the sync process"
+     echo "    ./sync.sh config_name push local run"
+     echo "    ./sync.sh config_name pull local run"
+     exit 1
+}
+
+# Check for required arguments
+if [ $# -lt 3 ]; then
+    echo "${LIGHT_YELLOW_TEXT}Error: Missing required arguments${RESET_TEXT}"
+    show_usage
+fi
+
 ## General Settings
 APPNAME=$(basename $0 | sed "s/\.sh$//")
 LOGNAME="${APPNAME}"
@@ -27,21 +59,6 @@ __LOG_FOLDER="${__DIR}/log"
 
 cd $__DIR;
 
-function show_howto(){
-     echo ""
-     echo "usage : $(basename $0) [OPTION]...  [config_name] [push|pull] [remote|local] [run] "
-     echo ""
-     echo "Only one option is allow"
-     echo "pull : Sync all my remote node files into my local computer"
-     echo "push : Sync all my local files to the remote node"
-	  echo ""
-	  echo ""
-     echo ""
-     echo "Example: $(basename $0) config_name push remote run"
-     echo "Example: $(basename $0) config_name pull remote run"
-     echo "Example: $(basename $0) config_name push local run"
-     echo "Example: $(basename $0) config_name pull local run"
-}
 
 if [ $# -eq 0 ] 
    then
