@@ -1,0 +1,4 @@
+# Specifies the file(s) to exclude when pushing.
+# sync only selected folder
+.DS_Store
+.ssh
