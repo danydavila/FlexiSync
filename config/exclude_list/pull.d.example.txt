@@ -1,2 +1,0 @@
-# list of file or folder path to excludes on pull
-.DS_Store
