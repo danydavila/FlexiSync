@@ -10,55 +10,93 @@ GREEN_TEXT=$'\e[92m'
 GREEN_BLINK_TEXT=$'\e[5;32m'
 
 function show_usage(){
-     echo ""
-     echo "usage : ./sync.sh [config_name] [push|pull] [remote|local] [run]"
-     echo ""
-     echo -e "\nExamples:"
-     echo -e "\n Synchronize local source to remote destination directory/files:"
-     echo "    Preview (--dry-run) perform a trial run that doesn't make any changes (and produces mostly the same output as a real run)"
-     echo "    ./sync.sh config_name push remote"
-     echo "    Run the process"
-     echo "    ./sync.sh config_name push remote run"
-     echo -e "\n Synchronize remote source to a local destination directory/files:"
-     echo "    Preview (--dry-run) is very useful option when you want to simulate the execution of an sync without actually making any changes."
-     echo "    ./sync.sh config_name pull remote"
-     echo "    Run the process"
-     echo "    ./sync.sh config_name pull remote run"
-     echo ""
-     echo " To Synchronize local source to local destination:"
-     echo "    Preview (--dry-run)"
-     echo "    ./sync.sh config_name push local"
-     echo "    ./sync.sh config_name pull local"
-     echo "    Run the sync process"
-     echo "    ./sync.sh config_name push local run"
-     echo "    ./sync.sh config_name pull local run"
-     exit 1
+   cat << EOF
+
+Usage: ./sync.sh [config_name] [push|pull] [remote|local] [run]
+
+Examples:
+- Synchronize local source to remote destination directory/files:
+  Preview (--dry-run) perform a trial run that doesn't make any changes (and produces mostly the same output as a real run)
+  ./sync.sh config_name push remote
+  Run the process
+  ./sync.sh config_name push remote run
+
+- Synchronize remote source to a local destination directory/files:
+  Preview (--dry-run) is very useful option when you want to simulate the execution of an sync without actually making any changes.
+  ./sync.sh config_name pull remote
+  Run the process
+  ./sync.sh config_name pull remote run
+
+- To Synchronize local source to local destination:
+  Preview (--dry-run)
+  ./sync.sh config_name push local
+  ./sync.sh config_name pull local
+  Run the sync process
+  ./sync.sh config_name push local run
+  ./sync.sh config_name pull local run
+
+EOF
+   exit 1
 }
 
-# Check for required arguments
-if [ $# -lt 3 ]; then
-    echo "${LIGHT_YELLOW_TEXT}Error: Missing required arguments${RESET_TEXT}"
+# Check for required configuration name
+if [ $# -lt 1 ]; then
+      echo "${LIGHT_YELLOW_TEXT} [x] Missing 1st parameter: [ configuration_file_name ] ${RESET_TEXT}";
+	   show_usage
+fi
+
+if [ $# -lt 2 ]; then
+    echo "${LIGHT_YELLOW_TEXT} [x] Missing 2nd parameters: [ pull | push] ${RESET_TEXT}";
     show_usage
+fi
+
+if [ "$2" == "pull" ] || [ "$2" == "push" ]; then
+   PULL_OR_PULL_ACTION=$2
+else
+   echo "${LIGHT_YELLOW_TEXT} [x] Second parameter must be 'pull' or 'push'. ${RESET_TEXT}";
+   exit 1;
+fi
+
+if [ $# -lt 3 ]; then
+    echo "${LIGHT_YELLOW_TEXT} [x] Missing 3rd parameters: [ remote | local] ${RESET_TEXT}";
+    show_usage
+fi
+
+if [ "$3" == "local" ] || [ "$3" == "remote" ]; then
+   LOCAL_OR_REMOTE=$3
+else
+   echo "${LIGHT_YELLOW_TEXT} [x] 3rd parameter must be 'remote' or 'local'. ${RESET_TEXT}";
+   show_usage
 fi
 
 # Assign variables from arguments
 CONFIG_NAME=$1
-ACTION=$2
-LOCATION=$3
+ACTION="${PULL_OR_PULL_ACTION}"
+LOCATION="${LOCAL_OR_REMOTE}"
 MODE=${4:-"--dry-run"}  # Default to dry-run if not specified
 
 # Directories
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="${DIR}/log"
-CONFIG_DIR="${DIR}/config/enabled/${CONFIG_NAME}.conf"
+LOG_FOLDER="${DIR}/log"
+CONFIG_FOLDER="${DIR}/config/enabled"
+EXCLUDE_FOLDER="${DIR}/config/exclude_list"
+INCLUDE_FOLDER="${DIR}/config/include_list"
+
+# Define configuration
+CONFIG_FILE="${CONFIG_FOLDER}/${CONFIG_NAME}.conf"
 
 # Check if configuration file exists
-if [ ! -f "${CONFIG_DIR}" ]; then
-    echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration file ${CONFIG_DIR}${RESET_TEXT}"
+if [ ! -f "${CONFIG_FILE}" ]; then
+    echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration file ${CONFIG_FILE}${RESET_TEXT}"
     echo "${LIGHTYELLOW_TEXT} [x] Missing 1st argument: [ configuration_file_name ] ${RESET_TEXT}";
-    exit 1
+    show_usage
 fi
 
+# Load configuration
+source "${CONFIG_FILE}"
+
+
+exit 1
 ## General Settings
 APPNAME=$(basename $0 | sed "s/\.sh$//")
 LOGNAME="${APPNAME}"
@@ -70,98 +108,56 @@ __HOSTNAME=$(hostname -s)
 __DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 __FILE="${__DIR}/$(basename "${BASH_SOURCE[0]}")"
 __BASE="$(basename ${__FILE} .sh)"
-__CONFIG_FOLDER="${__DIR}/config"
-__EXCLUDE_FOLDER="${__DIR}/config/exclude_list"
-__INCLUDE_FOLDER="${__DIR}/config/include_list"
-__LOG_FOLDER="${__DIR}/log"
-
-cd $__DIR;
 
 
-if [ $# -eq 0 ] 
-   then
-	   	echo "${LIGHTYELLOW_TEXT} [x] Missing argument: [configuration_file_name] [push|pull] [local|remote] ${RESET_TEXT}";
-         echo "${LIGHTYELLOW_TEXT} [x] Missing 1st argument: [ configuration_file_name ] ${RESET_TEXT}";
-	      show_howto 
-      exit 1;
-fi
-
-if [ $# -eq 1 ]
-   then
-	   	echo "${LIGHTYELLOW_TEXT} [x] Missing 2nd argument: [ pull | push] ${RESET_TEXT}";
-	    show_howto 
-      exit 1;
-fi
-
-if [ $# -eq 2 ]
-  then
-	   	echo "${LIGHTYELLOW_TEXT} [x] Missing 3tr argument: [ remote | local] ${RESET_TEXT}";
-	    show_howto 
-      exit 1;
-fi
-
-__NAME=$1
-__CONFIG_FILE="${__CONFIG_FOLDER}/$1.conf"
-
-if [ ! -f ${__CONFIG_FILE} ]; then echo "Missing ${__CONFIG_FILE} file"; exit 1; fi
-
-## Load configuration file
-source ${__CONFIG_FILE}
-
-## Preflight check some variable 
+## Preflight check some variable
 if [ -z ${SRC_BASEPATH:+x} ]; then echo "Missing SRC_BASEPATH from ${__CONFIG_FILE}"; exit 1; fi
 
-if [ -z ${REMOTE_DEST_IDENTITYKEY:+x} ]; then echo "Missing REMOTE_DEST_IDENTITYKEY from ${__CONFIG_FILE}"; exit 1; fi
-if [ -z ${REMOTE_DEST_PORT:+x} ]; then echo "Missing REMOTE_DEST_PORT from ${__CONFIG_FILE}"; exit 1; fi
-if [ -z ${REMOTE_DEST_USERNAME:+x} ]; then echo "Missing REMOTE_DEST_USERNAME from ${__CONFIG_FILE}"; exit 1; fi
-if [ -z ${REMOTE_DEST_HOSTNAME:+x} ]; then echo "Missing REMOTE_DEST_HOSTNAME from ${__CONFIG_FILE}"; exit 1; fi
-if [ -z ${REMOTE_DEST_BASEPATH:+x} ]; then echo "Missing REMOTE_DEST_BASEPATH from ${__CONFIG_FILE}"; exit 1; fi
-
-## Source basepath
-SRC_BASEPATH="$(cd ${SRC_BASEPATH} && pwd)"; 
-
-if [ -z ${SRC_BASEPATH:+x} ] 
-   then 
-   echo "Unable to determine if you are running on a laptop or desktop."; 
-   echo "Please review SRC_BASEPATH in your config file"; 
-   echo "Your Hostname: ${__HOSTNAME}";
-   exit 1; 
+# Check required config variables
+if [ "${LOCATION}" == "remote" ]
+   then
+   REQUIRED_VARS=(REMOTE_DEST_IDENTITYKEY REMOTE_DEST_PORT REMOTE_DEST_USERNAME REMOTE_DEST_HOSTNAME REMOTE_DEST_BASEPATH)
+   for var in "${REQUIRED_VARS[@]}"; do
+      if [ -z "${!var}" ]; then
+         echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration variable '$var'${RESET_TEXT}"
+         exit 1
+      fi
+   done
 fi
+
+# Ensure SRC_BASEPATH is absolute
+SRC_BASEPATH="$(cd "${SRC_BASEPATH}" && pwd)"
 
 ## Target basepath
-if [ "$3" == "remote" ]
-   then 
-   TARGET_BASEPATH="${REMOTE_DEST_BASEPATH}"; 
-fi
-
-if [ "$3" == "local" ]
-   then 
-   TARGET_BASEPATH="${DEST_BASEPATH}"; 
-fi
-
-if [ -z ${TARGET_BASEPATH:+x} ]
-   then 
-   echo "Unable to determine if you want to push to remote or local"; 
-   echo "Please make sure you parameter REMOTE_DEST_BASEPATH or LOCAL_BASEPATH is set "; 
-   echo "Please review  your config file";
-   exit 1; 
+# Set target base path based on location
+if [ "${LOCATION}" == "remote" ]; then
+    TARGET_BASEPATH="${REMOTE_DEST_BASEPATH}"
+elif [ "${LOCATION}" == "local" ]; then
+    TARGET_BASEPATH="${DEST_BASEPATH}"
+else
+    echo "${LIGHT_YELLOW_TEXT}Error: Invalid location '${LOCATION}' specified ${RESET_TEXT}"
+    show_usage
 fi
 
 ## Folder/Files to Backup during a push to target
-PUSH_BACKUPLIST=${__INCLUDE_FOLDER}/${PUSH_INCLUDE_LIST}
-
-## Folder/Files to ignore or exclude during a push to target
-PUSH_EXCLUTIONLIST=${__EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}
+PUSH_BACKUPLIST="${INCLUDE_FOLDER}/${PUSH_INCLUDE_LIST}"
+PUSH_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}"
 
 ## Folder/Files to ignore or exclude during a pull to target
-PULL_BACKUPLIST=${__INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}
+PULL_BACKUPLIST="${INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}"
+PULL_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}"
 
-## Folder/Files to ignore or exclude during a pull to target
-PULL_EXCLUTIONLIST=${__EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}
+# Ensure there is a list to push or pull
+if [ ! -f ${PULL_EXCLUTIONLIST} ] || [ ! -f ${PULL_BACKUPLIST} ] ;
+then
+   echo "${LIGHT_YELLOW_TEXT} Missing ${PULL_EXCLUTIONLIST} file ${RESET_TEXT}"
+   echo "${LIGHT_YELLOW_TEXT} Missing ${PULL_BACKUPLIST} file ${RESET_TEXT}"
+   exit 1;
+fi
 
 ## Logs file path
-PUSH_LOGFILE=${__LOG_FOLDER}/"$LOGDATE"_$LOGNAME.${__NAME}.push.log
-PULL_LOGFILE=${__LOG_FOLDER}/"$LOGDATE"_$LOGNAME.${__NAME}.pull.log
+PUSH_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.push.log"
+PULL_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.pull.log"
 
 function touchListFiles(){
   if [ ! -f $1 ]; 
@@ -270,9 +266,11 @@ RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='Thumbs.db' --exclude='.
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude={\"/dev/*\",\"/proc/*\",\"/sys/*\",\"/tmp/*\",\"/run/*\",\"/mnt/*\",\"/media/*\",\"/lost+found\"} ";
 
 echo ""
-showConfigVar 
-echo "" 
+showConfigVar
+echo ""
 
+echo 'Stoppe hammer time'
+exit 1;
 case $2 in
 	 pull) 
             if [ ! -f ${PULL_EXCLUTIONLIST} ] || [ ! -f ${PULL_BACKUPLIST} ] ;
