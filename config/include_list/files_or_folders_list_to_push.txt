@@ -1,5 +1,5 @@
+# Specifies the file(s) to include when pushing.
 # sync only selected folder
-.ssh
 Desktop
 Documents
 Pictures

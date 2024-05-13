@@ -1,19 +1,14 @@
-### Per user setting ignore confile files
+### Userspace
 config/*
-!config/example.conf
-!config/include_list
-config/include_list/*
-!config/exclude_list
-config/exclude_list/*
-
-!config/exclude_list/pull.d.example.txt
-!config/exclude_list/push.b.example.txt
-!config/include_list/pull.c.example.txt
-!config/include_list/push.a.example.txt
+!config/enabled/example.conf
+!config/exclude_list/ignore_files_on_pull.txt
+!config/exclude_list/ignore_files_on_push.txt
+!config/include_list/files_or_folders_list_to_pull.txt
+!config/include_list/files_or_folders_list_to_push.txt
 
 ### Project log files
 log/*
-!log/.keep
+!log/.gitkeep
 
 ### Ignore Mac OSX Operating System files
 .DS_Store
