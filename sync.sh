@@ -178,12 +178,11 @@ function showConfigVar(){
    echo "${GREEN_TEXT} Config Filepath:${RESET_TEXT} ${CONFIG_FILE}"
    echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${source_path}"
    echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${target_path}"
-   echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS} \ "
-   echo "--exclude-from=${exclude_path} \ ";
-   echo "--files-from=${include_path} \ ";
-   echo "--log-file=${LOGFILE} \ ";
-   echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}"
-   echo "${GREEN_TEXT} SSH Ciphers:${RESET_TEXT} ${SSH_OCIPHERS}"
+   echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS}"
+   echo -e "--exclude-from=${exclude_path}";
+   echo -e "--files-from=${include_path}";
+   echo -e "--log-file=${LOGFILE}";
+   echo "${GREEN_TEXT} Rsync Excludes Operating System files:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}"
 }
 
 if [ "${MODE}" == "--dry-run" ]; then
@@ -194,29 +193,22 @@ else
 fi
 
 # Default Rsync Options
-# for more options visit 
-#https://www.samba.org/ftp/rsync/rsync.html
-RSYNC_OPTIONS="--recursive";                        # recurse into directories
-#RSYNC_OPTIONS="${RSYNC_OPTIONS} --itemize-changes"; # output a change-summary for all updates
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --copy-links";      # transform symlink into referent file/dir
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --perms";           # -p (--perms) preserve permissions
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --times";           # -t (--times) preserve modification times
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --group";           # -g (--groups) preserve group
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --owner";           # -o (--owner) preserve owner (super-user only)
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --one-file-system"; # -x,(--one-file-system)don't cross filesystem boundaries
+# for more options visit =
+# https://www.samba.org/ftp/rsync/rsync.html#OPTION_SUMMARY
+RSYNC_OPTIONS="--archive"; #--archive, -a , archive mode is -rlptgoD (no -A,-X,-U,-N,-H)
+                           # -r recurse into directories
+                           # -p (--perms) preserve permissions
+                           # -t (--times) preserve modification times
+                           # -g (--groups) preserve group
+                           # -o (--owner) preserve owner (super-user only)
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --human-readable";  # output numbers in a human-readable format
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --delete-after";    # receiver deletes after transfer, not during
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --progress";        # show progress during transfer
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --stats";           # give some file-transfer stats
-#RSYNC_OPTIONS="${RSYNC_OPTIONS} --hard-links";     # -H (--hard-links) preserve hard links.
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --specials";        # This option causes rsync to transfer special files such as named sockets and fifos.
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --devices";         # This option causes rsync to transfer character and block device files to the remote
-                                                    # system to recreate these devices. This option has no effect if the receiving rsync 
-                                                    # is not run as the super-user.
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";        # skip based on checksum, not mod-time & size
 RSYNC_OPTIONS="${RSYNC_OPTIONS} ${DRYRUN}";         # give some file-transfer stats
 
-# Overwrite Rsync options
+# if the variable RSYNC_FLAGS is defined then ignore the default option and use user define favirable
 if [ ! -z ${RSYNC_FLAGS:+x} ];
    then
    RSYNC_OPTIONS=${RSYNC_FLAGS}
@@ -226,18 +218,6 @@ RSYNC_PATH='rsync'
 if [ ! -z ${REMOTE_BECOME_SUDO:+x} ] && [ "${REMOTE_BECOME_SUDO}" == 'yes' ];
    then
    RSYNC_PATH="sudo rsync"
-fi
-
-# Default SSH client cipher.
-# To found out supported ciphers. user [server]$  ssh -Q cipher.
-# cipher ending with -ctr or -gcm:
-# for CTR mode aims at confidentiality
-# for GCM additionally aims at integrity
-SSH_OCIPHERS="aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr"
-# Overwrite Rsync Ciphers
-if [ ! -z ${SSH_CIPHERS:+x} ];
-   then
-   SSH_OCIPHERS=${SSH_CIPHERS}
 fi
 
 # exclude Windows and Mac system file
@@ -266,25 +246,22 @@ case "${ACTION}" in
 
          if [ "${LOCATION}" == "local" ]
          then
-            # Run sync process
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-               --exclude-from=${PULL_EXCLUTIONLIST} \
-               --files-from=${PULL_BACKUPLIST} \
-               --log-file=${LOGFILE} \
+               --exclude-from="${PULL_EXCLUTIONLIST}" \
+               --files-from="${PULL_BACKUPLIST}" \
+               --log-file="${LOGFILE}" \
                ${TARGET_BASEPATH} ${SRC_BASEPATH}
-
-               echo ${SRC_BASEPATH}
          fi
 
          if [ "${LOCATION}" == "remote" ]
          then
-            # run rsync command ${RSYNC_OPTIONS}
-            # example : rsync -rlptgochu -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[source] [target]
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-            --exclude-from=${PULL_EXCLUTIONLIST} \
-            --files-from=${PULL_BACKUPLIST} \
-            --log-file=${LOGFILE} \
-            -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" --rsync-path="${RSYNC_PATH}" ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH} ${SRC_BASEPATH}
+            --exclude-from="${PULL_EXCLUTIONLIST}" \
+            --files-from="${PULL_BACKUPLIST}" \
+            --log-file="${LOGFILE}" \
+            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
+            --rsync-path="${RSYNC_PATH}" \
+            "${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}" ${SRC_BASEPATH}
          fi
     ;;
 	 push)
@@ -292,41 +269,30 @@ case "${ACTION}" in
          checkFileExistence ${PUSH_BACKUPLIST}
 
          # Display and log configuration
-         showConfigVar ${TARGET_BASEPATH} \
+         showConfigVar ${SRC_BASEPATH} \
          ${TARGET_BASEPATH} \
          ${PUSH_EXCLUTIONLIST} \
          ${PUSH_BACKUPLIST} | tee -a ${LOGFILE}
 
          if [ "${LOCATION}" == "local" ]
          then
-
-            # Run sync process
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-               --exclude-from=${PUSH_EXCLUTIONLIST} \
-               --files-from=${PUSH_BACKUPLIST} \
-               --log-file=${LOGFILE} \
+               --exclude-from="${PUSH_EXCLUTIONLIST}" \
+               --files-from="${PUSH_BACKUPLIST}" \
+               --log-file="${LOGFILE}" \
                ${SRC_BASEPATH} ${TARGET_BASEPATH}
          fi
 
          if [ "${LOCATION}" == "remote" ]
          then
-
-            # run rsync command
-            # example : rsync -rlptgochu [source] -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[target]
-            #echo ""; echo "";echo ""
-            #echo "RSYNC_OPTIONS: ${RSYNC_OPTIONS}"
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-            --exclude-from=${PUSH_EXCLUTIONLIST} \
-            --files-from=${PUSH_BACKUPLIST} \
-            --log-file=${LOGFILE} \
-            ${SRC_BASEPATH} -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}"  --rsync-path="${RSYNC_PATH}" \
-            ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}
-            # SSH Option:
-            # -T : turn off pseudo-tty to decrease cpu load on destination.
-            # -o : Compression=no : Turn off SSH compression.
-            # -x : turn off X forwarding if it is on by default.
-            # -c : try hardware accelerated AES-NI instructions.
-            # -oCiphers :  connect by specifying an allowed Cipher
+            --exclude-from="${PUSH_EXCLUTIONLIST}" \
+            --files-from="${PUSH_BACKUPLIST}" \
+            --log-file="${LOGFILE}" \
+            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
+            --rsync-path="${RSYNC_PATH}" \
+            ${SRC_BASEPATH} \
+            "${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}"
          fi
     ;;
     * )
