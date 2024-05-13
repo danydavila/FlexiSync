@@ -103,7 +103,6 @@ LOGNAME="${APP_NAME}"
 LOGDATE=$(date +"%Y-%m-%d_%H_%M")
 
 # Magic variables
-__RSYNC=$(which rsync)
 __HOSTNAME=$(hostname -s)
 __DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 __FILE="${__DIR}/$(basename "${BASH_SOURCE[0]}")"
@@ -124,9 +123,6 @@ if [ "${LOCATION}" == "remote" ]
       fi
    done
 fi
-
-# Ensure SRC_BASEPATH is absolute
-SRC_BASEPATH="$(cd "${SRC_BASEPATH}" && pwd)"
 
 ## Target basepath
 # Set target base path based on location
@@ -197,6 +193,7 @@ else
    DRYRUN=""
 fi
 
+# Default Rsync Options
 # for more options visit 
 #https://www.samba.org/ftp/rsync/rsync.html
 RSYNC_OPTIONS="--recursive";                        # recurse into directories
@@ -211,36 +208,35 @@ RSYNC_OPTIONS="${RSYNC_OPTIONS} --human-readable";  # output numbers in a human-
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --delete-after";    # receiver deletes after transfer, not during
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --progress";        # show progress during transfer
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --stats";           # give some file-transfer stats
-#RSYNC_OPTIONS="${RSYNC_OPTIONS} --hard-links";      # -H (--hard-links) preserve hard links.
+#RSYNC_OPTIONS="${RSYNC_OPTIONS} --hard-links";     # -H (--hard-links) preserve hard links.
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --specials";        # This option causes rsync to transfer special files such as named sockets and fifos.
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --devices";         # This option causes rsync to transfer character and block device files to the remote
                                                     # system to recreate these devices. This option has no effect if the receiving rsync 
                                                     # is not run as the super-user.
-RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";       # skip based on checksum, not mod-time & size
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --checksum";        # skip based on checksum, not mod-time & size
 RSYNC_OPTIONS="${RSYNC_OPTIONS} ${DRYRUN}";         # give some file-transfer stats
 
 # Overwrite Rsync options
-if [ ! -z ${RSYNC_FLAGS:+x} ]; 
-   then 
+if [ ! -z ${RSYNC_FLAGS:+x} ];
+   then
    RSYNC_OPTIONS=${RSYNC_FLAGS}
 fi
 
 RSYNC_PATH='rsync'
-if [ ! -z ${REMOTE_BECOME_SUDO:+x} ] && [ "${REMOTE_BECOME_SUDO}" == 'yes' ]; 
-   then 
+if [ ! -z ${REMOTE_BECOME_SUDO:+x} ] && [ "${REMOTE_BECOME_SUDO}" == 'yes' ];
+   then
    RSYNC_PATH="sudo rsync"
 fi
 
-
 # Default SSH client cipher.
-# To found out supported ciphers. user [server]$  ssh -Q cipher. 
-# cipher ending with -ctr or -gcm: 
-# for CTR mode aims at confidentiality 
+# To found out supported ciphers. user [server]$  ssh -Q cipher.
+# cipher ending with -ctr or -gcm:
+# for CTR mode aims at confidentiality
 # for GCM additionally aims at integrity
 SSH_OCIPHERS="aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr"
 # Overwrite Rsync Ciphers
-if [ ! -z ${SSH_CIPHERS:+x} ]; 
-   then 
+if [ ! -z ${SSH_CIPHERS:+x} ];
+   then
    SSH_OCIPHERS=${SSH_CIPHERS}
 fi
 
@@ -264,22 +260,22 @@ case "${ACTION}" in
 
             if [ "${LOCATION}" == "local" ]
             then
-                # run rsync command
-                # example : rsync -rlptgochu [source] [target]
-                ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+               # Display configuration
+               showConfigVar ${TARGET_BASEPATH}} ${SRC_BASEPATH} | tee -a ${PULL_LOGFILE}
+
+               # Run sync process
+               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                 --exclude-from=${PULL_EXCLUTIONLIST} \
                 --files-from=${PULL_BACKUPLIST} \
                 --log-file=${PULL_LOGFILE} \
                 ${TARGET_BASEPATH} ${SRC_BASEPATH}
-               # Display configuration
-               showPushConfigVar ${TARGET_BASEPATH}} ${SRC_BASEPATH}
             fi
 
             if [ "${LOCATION}" == "remote" ]
             then
                # run rsync command ${RSYNC_OPTIONS}
                # example : rsync -rlptgochu -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[source] [target]
-               ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                --exclude-from=${PULL_EXCLUTIONLIST} \
                --files-from=${PULL_BACKUPLIST} \
                --log-file=${PULL_LOGFILE} \
@@ -294,21 +290,15 @@ case "${ACTION}" in
 
             if [ "${LOCATION}" == "local" ]
             then
-                # run rsync command
-                ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+               # Display configuration
+               showConfigVar ${SRC_BASEPATH} ${TARGET_BASEPATH} | tee -a ${PUSH_LOGFILE}
+
+               # Run sync process
+               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                 --exclude-from=${PUSH_EXCLUTIONLIST} \
                 --files-from=${PUSH_BACKUPLIST} \
                 --log-file=${PUSH_LOGFILE} \
                 ${SRC_BASEPATH} ${TARGET_BASEPATH}
-               echo "";
-               echo -e "rsync ${RSYNC_OPTIONS} \ "
-               echo -e "--exclude-from=${PUSH_EXCLUTIONLIST} \ "
-               echo -e "--files-from=${PUSH_BACKUPLIST} \ "
-               echo -e "--log-file=${PUSH_LOGFILE} \ "
-               echo -e "${SRC_BASEPATH} ${TARGET_BASEPATH}"
-               echo "";
-               # Display configuration
-               showPushConfigVar ${SRC_BASEPATH} ${TARGET_BASEPATH}
             fi
 
             if [ "${LOCATION}" == "remote" ]
@@ -318,7 +308,7 @@ case "${ACTION}" in
                # example : rsync -rlptgochu [source] -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[target]
                #echo ""; echo "";echo ""
                #echo "RSYNC_OPTIONS: ${RSYNC_OPTIONS}"
-               ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                --exclude-from=${PUSH_EXCLUTIONLIST} \
                --files-from=${PUSH_BACKUPLIST} \
                --log-file=${PUSH_LOGFILE} \
