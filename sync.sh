@@ -204,6 +204,7 @@ RSYNC_OPTIONS="--archive"; #--archive, -a , archive mode is -rlptgoD (no -A,-X,-
                            # -t (--times) preserve modification times
                            # -g (--groups) preserve group
                            # -o (--owner) preserve owner (super-user only)
+RSYNC_OPTIONS="${RSYNC_OPTIONS} --recursive";       # recurse into directories
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --human-readable";  # output numbers in a human-readable format
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --delete-after";    # receiver deletes after transfer, not during
 RSYNC_OPTIONS="${RSYNC_OPTIONS} --progress";        # show progress during transfer
