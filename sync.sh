@@ -143,9 +143,7 @@ PUSH_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}"
 PULL_BACKUPLIST="${INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}"
 PULL_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}"
 
-## Logs file path
-PUSH_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.push.log"
-PULL_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.pull.log"
+LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}_${CONFIG_NAME}_${ACTION}.log"
 
 function touchListFiles(){
   if [ ! -f $1 ];
@@ -170,6 +168,8 @@ function checkFileExistence() {
 function showConfigVar(){
    local source_path=$1
    local target_path=$2
+   local exclude_path=$3
+   local include_path=$4
    echo "${GREEN_TEXT} App:${RESET_TEXT} ${APP_NAME} (${APP_VERSION}) "
    echo "${GREEN_TEXT} Configuration Name:${RESET_TEXT} ${CONFIG_NAME} "
    echo "${GREEN_TEXT} Action:${RESET_TEXT} ${ACTION}"
@@ -179,9 +179,9 @@ function showConfigVar(){
    echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${source_path}"
    echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${target_path}"
    echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS} \ "
-   echo "--exclude-from=${PUSH_EXCLUTIONLIST} \ ";
-   echo "--files-from=${PUSH_BACKUPLIST} \ ";
-   echo "--log-file=${PUSH_LOGFILE} \ ";
+   echo "--exclude-from=${exclude_path} \ ";
+   echo "--files-from=${include_path} \ ";
+   echo "--log-file=${LOGFILE} \ ";
    echo "${GREEN_TEXT} Rsync Exclude Option:${RESET_TEXT} ${RSYNC_EXCLUDE_OSFILE}"
    echo "${GREEN_TEXT} SSH Ciphers:${RESET_TEXT} ${SSH_OCIPHERS}"
 }
@@ -255,76 +255,83 @@ RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude={\"/dev/*\",\"/proc/*\",
 
 case "${ACTION}" in
 	 pull)
-          checkFileExistence ${PULL_EXCLUTIONLIST}
-          checkFileExistence ${PULL_BACKUPLIST}
+         checkFileExistence ${PULL_EXCLUTIONLIST}
+         checkFileExistence ${PULL_BACKUPLIST}
 
-            if [ "${LOCATION}" == "local" ]
-            then
-               # Display configuration
-               showConfigVar ${TARGET_BASEPATH}} ${SRC_BASEPATH} | tee -a ${PULL_LOGFILE}
+         # Display and log configuration
+         showConfigVar ${TARGET_BASEPATH} \
+         ${SRC_BASEPATH} \
+         ${PULL_EXCLUTIONLIST} \
+         ${PULL_BACKUPLIST} | tee -a ${LOGFILE}
 
-               # Run sync process
-               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-                --exclude-from=${PULL_EXCLUTIONLIST} \
-                --files-from=${PULL_BACKUPLIST} \
-                --log-file=${PULL_LOGFILE} \
-                ${TARGET_BASEPATH} ${SRC_BASEPATH}
-            fi
-
-            if [ "${LOCATION}" == "remote" ]
-            then
-               # run rsync command ${RSYNC_OPTIONS}
-               # example : rsync -rlptgochu -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[source] [target]
-               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+         if [ "${LOCATION}" == "local" ]
+         then
+            # Run sync process
+            rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                --exclude-from=${PULL_EXCLUTIONLIST} \
                --files-from=${PULL_BACKUPLIST} \
-               --log-file=${PULL_LOGFILE} \
-               -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" --rsync-path="${RSYNC_PATH}" ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH} ${SRC_BASEPATH}
-            fi
-            # Display configuration
-            showPullConfigVar
+               --log-file=${LOGFILE} \
+               ${TARGET_BASEPATH} ${SRC_BASEPATH}
+
+               echo ${SRC_BASEPATH}
+         fi
+
+         if [ "${LOCATION}" == "remote" ]
+         then
+            # run rsync command ${RSYNC_OPTIONS}
+            # example : rsync -rlptgochu -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[source] [target]
+            rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+            --exclude-from=${PULL_EXCLUTIONLIST} \
+            --files-from=${PULL_BACKUPLIST} \
+            --log-file=${LOGFILE} \
+            -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" --rsync-path="${RSYNC_PATH}" ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH} ${SRC_BASEPATH}
+         fi
     ;;
 	 push)
          checkFileExistence ${PUSH_EXCLUTIONLIST}
          checkFileExistence ${PUSH_BACKUPLIST}
 
-            if [ "${LOCATION}" == "local" ]
-            then
-               # Display configuration
-               showConfigVar ${SRC_BASEPATH} ${TARGET_BASEPATH} | tee -a ${PUSH_LOGFILE}
+         # Display and log configuration
+         showConfigVar ${TARGET_BASEPATH} \
+         ${TARGET_BASEPATH} \
+         ${PUSH_EXCLUTIONLIST} \
+         ${PUSH_BACKUPLIST} | tee -a ${LOGFILE}
 
-               # Run sync process
-               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-                --exclude-from=${PUSH_EXCLUTIONLIST} \
-                --files-from=${PUSH_BACKUPLIST} \
-                --log-file=${PUSH_LOGFILE} \
-                ${SRC_BASEPATH} ${TARGET_BASEPATH}
-            fi
+         if [ "${LOCATION}" == "local" ]
+         then
 
-            if [ "${LOCATION}" == "remote" ]
-            then
-
-               # run rsync command
-               # example : rsync -rlptgochu [source] -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[target]
-               #echo ""; echo "";echo ""
-               #echo "RSYNC_OPTIONS: ${RSYNC_OPTIONS}"
-               rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+            # Run sync process
+            rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                --exclude-from=${PUSH_EXCLUTIONLIST} \
                --files-from=${PUSH_BACKUPLIST} \
-               --log-file=${PUSH_LOGFILE} \
-               ${SRC_BASEPATH} -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}"  --rsync-path="${RSYNC_PATH}" \
-               ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}
-               # SSH Option:
-               # -T : turn off pseudo-tty to decrease cpu load on destination.
-               # -o : Compression=no : Turn off SSH compression.
-               # -x : turn off X forwarding if it is on by default.
-               # -c : try hardware accelerated AES-NI instructions.
-               # -oCiphers :  connect by specifying an allowed Cipher
-            fi
+               --log-file=${LOGFILE} \
+               ${SRC_BASEPATH} ${TARGET_BASEPATH}
+         fi
+
+         if [ "${LOCATION}" == "remote" ]
+         then
+
+            # run rsync command
+            # example : rsync -rlptgochu [source] -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[target]
+            #echo ""; echo "";echo ""
+            #echo "RSYNC_OPTIONS: ${RSYNC_OPTIONS}"
+            rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
+            --exclude-from=${PUSH_EXCLUTIONLIST} \
+            --files-from=${PUSH_BACKUPLIST} \
+            --log-file=${LOGFILE} \
+            ${SRC_BASEPATH} -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}"  --rsync-path="${RSYNC_PATH}" \
+            ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}
+            # SSH Option:
+            # -T : turn off pseudo-tty to decrease cpu load on destination.
+            # -o : Compression=no : Turn off SSH compression.
+            # -x : turn off X forwarding if it is on by default.
+            # -c : try hardware accelerated AES-NI instructions.
+            # -oCiphers :  connect by specifying an allowed Cipher
+         fi
     ;;
     * )
-       echo "Unable to find process action"
-	     show_howto
-       exit 1;
+      echo "${LIGHT_YELLOW_TEXT}Error: Invalid action '${ACTION}' specified${RESET_TEXT}"
+	   show_usage
+      exit 1;
     ;;
 esac
