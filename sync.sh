@@ -147,14 +147,6 @@ PUSH_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}"
 PULL_BACKUPLIST="${INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}"
 PULL_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}"
 
-# Ensure there is a list to push or pull
-if [ ! -f ${PULL_EXCLUTIONLIST} ] || [ ! -f ${PULL_BACKUPLIST} ] ;
-then
-   echo "${LIGHT_YELLOW_TEXT} Missing ${PULL_EXCLUTIONLIST} file ${RESET_TEXT}"
-   echo "${LIGHT_YELLOW_TEXT} Missing ${PULL_BACKUPLIST} file ${RESET_TEXT}"
-   exit 1;
-fi
-
 ## Logs file path
 PUSH_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.push.log"
 PULL_LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}.pull.log"
@@ -172,15 +164,24 @@ touchListFiles ${PUSH_EXCLUTIONLIST}
 touchListFiles ${PULL_BACKUPLIST}
 touchListFiles ${PULL_EXCLUTIONLIST}
 
+function checkFileExistence() {
+    if [ ! -f "$1" ]; then
+        echo "${LIGHTYELLOW_TEXT} Missing $1 file"
+        exit 1
+    fi
+}
+
 function showConfigVar(){
+   local source_path=$1
+   local target_path=$2
    echo "${GREEN_TEXT} App:${RESET_TEXT} ${APP_NAME} (${APP_VERSION}) "
    echo "${GREEN_TEXT} Configuration Name:${RESET_TEXT} ${CONFIG_NAME} "
    echo "${GREEN_TEXT} Action:${RESET_TEXT} ${ACTION}"
    echo "${GREEN_TEXT} Location:${RESET_TEXT} ${LOCATION}"
    echo "${GREEN_TEXT} Mode:${RESET_TEXT} ${MODE}"
    echo "${GREEN_TEXT} Config Filepath:${RESET_TEXT} ${CONFIG_FILE}"
-   echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${SRC_BASEPATH}"
-   echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${TARGET_BASEPATH}"
+   echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${source_path}"
+   echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${target_path}"
    echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS} \ "
    echo "--exclude-from=${PUSH_EXCLUTIONLIST} \ ";
    echo "--files-from=${PUSH_BACKUPLIST} \ ";
@@ -256,23 +257,13 @@ RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='hiberfil.sys' --exclude
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude='Thumbs.db' --exclude='._.TemporaryItems' --exclude='._.DS_Store' --exclude='._.com.apple.timemachine.donotpresent'";
 RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude={\"/dev/*\",\"/proc/*\",\"/sys/*\",\"/tmp/*\",\"/run/*\",\"/mnt/*\",\"/media/*\",\"/lost+found\"} ";
 
-echo ""
-showConfigVar
-echo ""
+case "${ACTION}" in
+	 pull)
+          checkFileExistence ${PULL_EXCLUTIONLIST}
+          checkFileExistence ${PULL_BACKUPLIST}
 
-exit 1;
-case $2 in
-	 pull) 
-            if [ ! -f ${PULL_EXCLUTIONLIST} ] || [ ! -f ${PULL_BACKUPLIST} ] ;
-            then 
-
-               echo "${LIGHTYELLOW_TEXT} Missing ${PULL_EXCLUTIONLIST} file"
-               echo "${LIGHTYELLOW_TEXT} Missing ${PULL_BACKUPLIST} file"
-               exit 1; 
-            fi
-            
-            if [ "$3" == "local" ]
-            then 
+            if [ "${LOCATION}" == "local" ]
+            then
                 # run rsync command
                 # example : rsync -rlptgochu [source] [target]
                 ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
@@ -280,10 +271,12 @@ case $2 in
                 --files-from=${PULL_BACKUPLIST} \
                 --log-file=${PULL_LOGFILE} \
                 ${TARGET_BASEPATH} ${SRC_BASEPATH}
+               # Display configuration
+               showPushConfigVar ${TARGET_BASEPATH}} ${SRC_BASEPATH}
             fi
 
-            if [ "$3" == "remote" ]
-            then 
+            if [ "${LOCATION}" == "remote" ]
+            then
                # run rsync command ${RSYNC_OPTIONS}
                # example : rsync -rlptgochu -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[source] [target]
                ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
@@ -292,35 +285,39 @@ case $2 in
                --log-file=${PULL_LOGFILE} \
                -e "ssh -oCiphers=${SSH_OCIPHERS} -T -o Compression=no -x -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" --rsync-path="${RSYNC_PATH}" ${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH} ${SRC_BASEPATH}
             fi
-
+            # Display configuration
+            showPullConfigVar
     ;;
 	 push)
-            if [ ! -f ${PUSH_EXCLUTIONLIST} ] || [ ! -f ${PUSH_BACKUPLIST} ] ;
-            then 
-               echo ""
-               showConfigVar 
-               echo ""
-               echo "${LIGHTYELLOW_TEXT} Missing ${PUSH_EXCLUTIONLIST} file"
-               echo "${LIGHTYELLOW_TEXT} Missing ${PUSH_BACKUPLIST} file"
-               exit 1; 
-            fi
+         checkFileExistence ${PUSH_EXCLUTIONLIST}
+         checkFileExistence ${PUSH_BACKUPLIST}
 
-            if [ "$3" == "local" ]
-            then 
+            if [ "${LOCATION}" == "local" ]
+            then
                 # run rsync command
-                # example : rsync -rlptgochu [source] [target]
                 ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                 --exclude-from=${PUSH_EXCLUTIONLIST} \
                 --files-from=${PUSH_BACKUPLIST} \
                 --log-file=${PUSH_LOGFILE} \
                 ${SRC_BASEPATH} ${TARGET_BASEPATH}
+               echo "";
+               echo -e "rsync ${RSYNC_OPTIONS} \ "
+               echo -e "--exclude-from=${PUSH_EXCLUTIONLIST} \ "
+               echo -e "--files-from=${PUSH_BACKUPLIST} \ "
+               echo -e "--log-file=${PUSH_LOGFILE} \ "
+               echo -e "${SRC_BASEPATH} ${TARGET_BASEPATH}"
+               echo "";
+               # Display configuration
+               showPushConfigVar ${SRC_BASEPATH} ${TARGET_BASEPATH}
             fi
 
-            if [ "$3" == "remote" ]
-            then 
+            if [ "${LOCATION}" == "remote" ]
+            then
 
                # run rsync command
                # example : rsync -rlptgochu [source] -e "ssh -p 22 -i ~/id_rsa" nas@nas.server.com:~/[target]
+               #echo ""; echo "";echo ""
+               #echo "RSYNC_OPTIONS: ${RSYNC_OPTIONS}"
                ${__RSYNC} ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
                --exclude-from=${PUSH_EXCLUTIONLIST} \
                --files-from=${PUSH_BACKUPLIST} \
@@ -341,8 +338,3 @@ case $2 in
        exit 1;
     ;;
 esac
-
-# Display configuration 
-showConfigVar
-
-exit 0; #Success
