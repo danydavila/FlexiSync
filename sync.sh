@@ -85,18 +85,42 @@ CONFIG_FOLDER="${DIR}/config/enabled"
 EXCLUDE_FOLDER="${DIR}/config/exclude_list"
 INCLUDE_FOLDER="${DIR}/config/include_list"
 
-# Define configuration
-CONFIG_FILE="${CONFIG_FOLDER}/${CONFIG_NAME}.conf"
+# Check if the first argument is not 'no-config-file'
+if [ "${CONFIG_NAME}" != "cli-config" ]; then
+   # Define configuration
+   CONFIG_FILE="${CONFIG_FOLDER}/${CONFIG_NAME}.conf"
 
-# Check if configuration file exists
-if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration file ${CONFIG_FILE}${RESET_TEXT}"
-    echo "${LIGHTYELLOW_TEXT} [x] Missing 1st argument: [ configuration_file_name ] ${RESET_TEXT}";
-    show_usage
+   # Check if configuration file exists
+   if [ ! -f "${CONFIG_FILE}" ]; then
+      echo "${LIGHT_YELLOW_TEXT}Error: Missing configuration file ${CONFIG_FILE}${RESET_TEXT}"
+      echo "${LIGHTYELLOW_TEXT} [x] Missing 1st argument: [ configuration_file_name ] ${RESET_TEXT}";
+      show_usage
+   fi
+
+   # Load configuration
+    source "${CONFIG_FILE}"
+
+   ## Folder/Files to Backup during a push to target
+   PUSH_BACKUPLIST_PATH="${INCLUDE_FOLDER}/${PUSH_INCLUDE_LIST}"
+   PUSH_EXCLUTIONLIST_PATH="${EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}"
+
+   ## Folder/Files to ignore or exclude during a pull to target
+   PULL_BACKUPLIST_PATH="${INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}"
+   PULL_EXCLUTIONLIST_PATH="${EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}"
 fi
 
-# Load configuration
-source "${CONFIG_FILE}"
+if [ "${CONFIG_NAME}" == "cli-config" ]; then
+   CONFIG_FILE="none - running as CLI Config"
+    ## Preflight variables check
+    if [ -z "${SRC_BASEPATH}" ]; then echo "Missing SRC_BASEPATH value"; exit 1; fi
+    if [ -z "${DEST_BASEPATH}" ]; then echo "Missing DEST_BASEPATH value"; exit 1; fi
+    if [ -z "${PUSH_BACKUPLIST_PATH}" ]; then echo "Missing PUSH_BACKUPLIST_PATH value"; exit 1; fi
+    if [ -z "${PUSH_EXCLUTIONLIST_PATH}" ]; then echo "Missing PUSH_EXCLUTIONLIST_PATH value"; exit 1; fi
+    if [ -z "${PULL_BACKUPLIST_PATH}" ]; then echo "Missing PULL_BACKUPLIST_PATH value"; exit 1; fi
+    if [ -z "${PULL_EXCLUTIONLIST_PATH}" ]; then echo "Missing PULL_EXCLUTIONLIST_PATH value"; exit 1; fi
+    if [ -z "${REMOTE_DEST_PORT}" ]; then REMOTE_DEST_PORT=22; fi
+    if [ -z "${REMOTE_DEST_IDENTITYKEY}" ]; then REMOTE_DEST_IDENTITYKEY=~/.ssh/id_rsa; fi
+fi
 
 ## General Settings
 LOGNAME="${APP_NAME}"
@@ -135,32 +159,11 @@ else
     show_usage
 fi
 
-## Folder/Files to Backup during a push to target
-PUSH_BACKUPLIST="${INCLUDE_FOLDER}/${PUSH_INCLUDE_LIST}"
-PUSH_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PUSH_EXCLUDE_LIST}"
-
-## Folder/Files to ignore or exclude during a pull to target
-PULL_BACKUPLIST="${INCLUDE_FOLDER}/${PULL_INCLUDE_LIST}"
-PULL_EXCLUTIONLIST="${EXCLUDE_FOLDER}/${PULL_EXCLUDE_LIST}"
-
 LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}_${CONFIG_NAME}_${ACTION}.log"
-
-function touchListFiles(){
-  if [ ! -f $1 ];
-   then
-   echo "Missing $1 file";
-   echo "Creating file..."
-   touch $1
-  fi
-}
-touchListFiles ${PUSH_BACKUPLIST}
-touchListFiles ${PUSH_EXCLUTIONLIST}
-touchListFiles ${PULL_BACKUPLIST}
-touchListFiles ${PULL_EXCLUTIONLIST}
 
 function checkFileExistence() {
     if [ ! -f "$1" ]; then
-        echo "${LIGHTYELLOW_TEXT} Missing $1 file"
+        echo "${LIGHT_YELLOW_TEXT} Missing $1 file"
         exit 1
     fi
 }
@@ -235,20 +238,20 @@ RSYNC_EXCLUDE_OSFILE="${RSYNC_EXCLUDE_OSFILE} --exclude={\"/dev/*\",\"/proc/*\",
 
 case "${ACTION}" in
 	 pull)
-         checkFileExistence ${PULL_EXCLUTIONLIST}
-         checkFileExistence ${PULL_BACKUPLIST}
+         checkFileExistence ${PULL_EXCLUTIONLIST_PATH}
+         checkFileExistence ${PULL_BACKUPLIST_PATH}
 
          # Display and log configuration
          showConfigVar ${TARGET_BASEPATH} \
          ${SRC_BASEPATH} \
-         ${PULL_EXCLUTIONLIST} \
-         ${PULL_BACKUPLIST} | tee -a ${LOGFILE}
+         ${PULL_EXCLUTIONLIST_PATH} \
+         ${PULL_BACKUPLIST_PATH} | tee -a ${LOGFILE}
 
          if [ "${LOCATION}" == "local" ]
          then
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-               --exclude-from="${PULL_EXCLUTIONLIST}" \
-               --files-from="${PULL_BACKUPLIST}" \
+               --exclude-from="${PULL_EXCLUTIONLIST_PATH}" \
+               --files-from="${PULL_BACKUPLIST_PATH}" \
                --log-file="${LOGFILE}" \
                ${TARGET_BASEPATH} ${SRC_BASEPATH}
          fi
@@ -256,8 +259,8 @@ case "${ACTION}" in
          if [ "${LOCATION}" == "remote" ]
          then
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-            --exclude-from="${PULL_EXCLUTIONLIST}" \
-            --files-from="${PULL_BACKUPLIST}" \
+            --files-from="${PULL_BACKUPLIST_PATH}" \
+            --exclude-from="${PULL_EXCLUTIONLIST_PATH}" \
             --log-file="${LOGFILE}" \
             -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
             --rsync-path="${RSYNC_PATH}" \
@@ -265,20 +268,20 @@ case "${ACTION}" in
          fi
     ;;
 	 push)
-         checkFileExistence ${PUSH_EXCLUTIONLIST}
-         checkFileExistence ${PUSH_BACKUPLIST}
+         checkFileExistence ${PUSH_EXCLUTIONLIST_PATH}
+         checkFileExistence ${PUSH_BACKUPLIST_PATH}
 
          # Display and log configuration
          showConfigVar ${SRC_BASEPATH} \
          ${TARGET_BASEPATH} \
-         ${PUSH_EXCLUTIONLIST} \
-         ${PUSH_BACKUPLIST} | tee -a ${LOGFILE}
+         ${PUSH_EXCLUTIONLIST_PATH} \
+         ${PUSH_BACKUPLIST_PATH} | tee -a ${LOGFILE}
 
          if [ "${LOCATION}" == "local" ]
          then
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-               --exclude-from="${PUSH_EXCLUTIONLIST}" \
-               --files-from="${PUSH_BACKUPLIST}" \
+               --files-from="${PUSH_BACKUPLIST_PATH}" \
+               --exclude-from="${PUSH_EXCLUTIONLIST_PATH}" \
                --log-file="${LOGFILE}" \
                ${SRC_BASEPATH} ${TARGET_BASEPATH}
          fi
@@ -286,8 +289,8 @@ case "${ACTION}" in
          if [ "${LOCATION}" == "remote" ]
          then
             rsync ${RSYNC_OPTIONS} ${RSYNC_EXCLUDE_OSFILE} \
-            --exclude-from="${PUSH_EXCLUTIONLIST}" \
-            --files-from="${PUSH_BACKUPLIST}" \
+            --exclude-from="${PUSH_EXCLUTIONLIST_PATH}" \
+            --files-from="${PUSH_BACKUPLIST_PATH}" \
             --log-file="${LOGFILE}" \
             -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
             --rsync-path="${RSYNC_PATH}" \
