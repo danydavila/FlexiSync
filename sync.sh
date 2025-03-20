@@ -4,7 +4,7 @@ set -o pipefail
 set -o nounset
 
 APP_NAME="flexisync"
-APP_VERSION="1.0.0"
+APP_VERSION="1.0.1"
 ## Set some color for our text. Color constants
 RESET_TEXT=$'\e[0m'
 LIGHT_YELLOW_TEXT=$'\e[93m'
@@ -118,8 +118,9 @@ if [ "${CONFIG_NAME}" == "cli-config" ]; then
     if [ -z "${PUSH_EXCLUTIONLIST_PATH}" ]; then echo "Missing PUSH_EXCLUTIONLIST_PATH value"; exit 1; fi
     if [ -z "${PULL_BACKUPLIST_PATH}" ]; then echo "Missing PULL_BACKUPLIST_PATH value"; exit 1; fi
     if [ -z "${PULL_EXCLUTIONLIST_PATH}" ]; then echo "Missing PULL_EXCLUTIONLIST_PATH value"; exit 1; fi
-    if [ -z "${REMOTE_DEST_PORT}" ]; then REMOTE_DEST_PORT=22; fi
-    if [ -z "${REMOTE_DEST_IDENTITYKEY}" ]; then REMOTE_DEST_IDENTITYKEY=~/.ssh/id_rsa; fi
+    if [ -z "${REMOTE_DEST_PORT:-}" ]; then REMOTE_DEST_PORT=22; fi
+    if [ -z "${REMOTE_DEST_IDENTITYKEY:-}" ]; then REMOTE_DEST_IDENTITYKEY=~/.ssh/id_rsa; fi
+    if [ -z "${REMOTE_HOST_VERIFICATION:-}" ]; then REMOTE_HOST_VERIFICATION='yes'; fi
 fi
 
 ## General Settings
@@ -159,6 +160,12 @@ else
     show_usage
 fi
 
+SSH_REMOTE_HOST_VERIFICATION=""
+if [ "${REMOTE_HOST_VERIFICATION}" == "no" ]; then
+   SSH_REMOTE_HOST_VERIFICATION='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+fi
+
+
 LOGFILE="${LOG_FOLDER}/${LOGDATE}_${LOGNAME}_${CONFIG_NAME}_${ACTION}.log"
 
 function checkFileExistence() {
@@ -181,6 +188,9 @@ function showConfigVar(){
    echo "${GREEN_TEXT} Config Filepath:${RESET_TEXT} ${CONFIG_FILE}"
    echo "${GREEN_TEXT} Source Base Path:${RESET_TEXT} ${source_path}"
    echo "${GREEN_TEXT} Target Base Path:${RESET_TEXT} ${target_path}"
+   echo "${GREEN_TEXT} Remote ID RSA:${RESET_TEXT} ${REMOTE_DEST_IDENTITYKEY}"
+   echo "${GREEN_TEXT} Remote Port:${RESET_TEXT} ${REMOTE_DEST_PORT}"
+   echo "${GREEN_TEXT} Remote host verification:${RESET_TEXT} ${REMOTE_HOST_VERIFICATION}"
    echo "${GREEN_TEXT} Rsync Option:${RESET_TEXT} ${RSYNC_OPTIONS}"
    echo -e "--exclude-from=${exclude_path}";
    echo -e "--files-from=${include_path}";
@@ -263,7 +273,7 @@ case "${ACTION}" in
             --files-from="${PULL_BACKUPLIST_PATH}" \
             --exclude-from="${PULL_EXCLUTIONLIST_PATH}" \
             --log-file="${LOGFILE}" \
-            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
+            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY} ${SSH_REMOTE_HOST_VERIFICATION}" \
             --rsync-path="${RSYNC_PATH}" \
             "${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}" ${SRC_BASEPATH}
          fi
@@ -293,7 +303,7 @@ case "${ACTION}" in
             --exclude-from="${PUSH_EXCLUTIONLIST_PATH}" \
             --files-from="${PUSH_BACKUPLIST_PATH}" \
             --log-file="${LOGFILE}" \
-            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY}" \
+            -e "ssh -p ${REMOTE_DEST_PORT} -i ${REMOTE_DEST_IDENTITYKEY} ${SSH_REMOTE_HOST_VERIFICATION} " \
             --rsync-path="${RSYNC_PATH}" \
             ${SRC_BASEPATH} \
             "${REMOTE_DEST_USERNAME}@${REMOTE_DEST_HOSTNAME}:${REMOTE_DEST_BASEPATH}"
